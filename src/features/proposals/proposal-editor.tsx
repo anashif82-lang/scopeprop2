@@ -5,7 +5,17 @@ import type { Proposal, ProposalSection, SectionKey } from "@/types";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { cn, statusColor, statusLabel } from "@/lib/utils";
-import { Pencil, Check, X, Copy, ExternalLink, Send } from "lucide-react";
+import {
+  Pencil,
+  Check,
+  X,
+  Copy,
+  ExternalLink,
+  Send,
+  FileOutput,
+  Files,
+  Link as LinkIcon,
+} from "lucide-react";
 import { SECTION_LABELS, SECTION_ORDER } from "@/lib/db/proposals";
 
 interface ProposalEditorProps {
@@ -59,6 +69,11 @@ export function ProposalEditor({ proposal, appUrl }: ProposalEditorProps) {
     show("Link copied to clipboard", "success");
   }
 
+  async function copySection(content: string) {
+    await navigator.clipboard.writeText(content);
+    show("Section copied to clipboard", "success");
+  }
+
   async function markSent() {
     setSharing(true);
     try {
@@ -81,13 +96,13 @@ export function ProposalEditor({ proposal, appUrl }: ProposalEditorProps) {
       {ToastComponent}
 
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-8">
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-6">
         <div>
           <div className="flex items-center gap-3 mb-1">
             <h1 className="text-2xl font-bold text-gray-900">{proposal.title}</h1>
             <span
               className={cn(
-                "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
+                "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold",
                 statusColor(proposal.status)
               )}
             >
@@ -102,10 +117,23 @@ export function ProposalEditor({ proposal, appUrl }: ProposalEditorProps) {
           )}
         </div>
 
+        {/* Action bar */}
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={copyLink}>
-            <Copy className="h-3.5 w-3.5" />
-            Copy link
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => show("Duplicate coming soon", "success")}
+          >
+            <Files className="h-3.5 w-3.5" />
+            Duplicate
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => show("PDF export coming soon", "success")}
+          >
+            <FileOutput className="h-3.5 w-3.5" />
+            Export PDF
           </Button>
           <Button variant="outline" size="sm" asChild>
             <a href={publicUrl} target="_blank" rel="noopener noreferrer">
@@ -123,13 +151,23 @@ export function ProposalEditor({ proposal, appUrl }: ProposalEditorProps) {
       </div>
 
       {/* Share bar */}
-      <div className="mb-8 flex items-center gap-3 rounded-xl bg-violet-50 border border-violet-100 px-4 py-3">
-        <div className="flex-1 text-sm text-violet-700 font-mono truncate">
-          {publicUrl}
+      <div className="mb-8 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 px-5 py-4 flex items-center gap-4 shadow-sm shadow-violet-200">
+        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/15 flex-shrink-0">
+            <LinkIcon className="h-4 w-4 text-white" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-xs font-semibold text-violet-200 mb-0.5">Shareable link</div>
+            <div className="text-sm text-white font-mono truncate opacity-90">{publicUrl}</div>
+          </div>
         </div>
-        <Button size="sm" variant="outline" onClick={copyLink}
-          className="border-violet-200 text-violet-700 hover:bg-violet-100 flex-shrink-0">
-          Copy
+        <Button
+          size="sm"
+          onClick={copyLink}
+          className="bg-white/15 hover:bg-white/25 text-white border border-white/20 flex-shrink-0 active:scale-[0.97]"
+        >
+          <Copy className="h-3.5 w-3.5" />
+          Copy link
         </Button>
       </div>
 
@@ -148,6 +186,7 @@ export function ProposalEditor({ proposal, appUrl }: ProposalEditorProps) {
             onSave={() => saveSection(key)}
             onCancel={cancelEdit}
             onEditChange={setEditContent}
+            onCopy={() => copySection(sections[key] ?? "")}
           />
         ))}
       </div>
@@ -166,6 +205,7 @@ interface SectionCardProps {
   onSave: () => void;
   onCancel: () => void;
   onEditChange: (val: string) => void;
+  onCopy: () => void;
 }
 
 function SectionCard({
@@ -178,21 +218,33 @@ function SectionCard({
   onSave,
   onCancel,
   onEditChange,
+  onCopy,
 }: SectionCardProps) {
   return (
-    <div className="rounded-xl border border-gray-100 bg-white overflow-hidden">
+    <div className="rounded-xl border border-gray-100 bg-white overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200">
       <div className="flex items-center justify-between px-5 py-3 bg-gray-50/60 border-b border-gray-100">
-        <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+        <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
           {label}
         </span>
         {!isEditing && (
-          <button
-            onClick={onEdit}
-            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-violet-600 transition-colors"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-            Edit
-          </button>
+          <div className="flex items-center gap-2">
+            {content && (
+              <button
+                onClick={onCopy}
+                className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors px-1.5 py-0.5 rounded hover:bg-gray-100"
+              >
+                <Copy className="h-3 w-3" />
+                Copy
+              </button>
+            )}
+            <button
+              onClick={onEdit}
+              className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-violet-600 transition-colors px-1.5 py-0.5 rounded hover:bg-violet-50"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Edit
+            </button>
+          </div>
         )}
       </div>
 
@@ -202,7 +254,7 @@ function SectionCard({
             <textarea
               value={editContent}
               onChange={(e) => onEditChange(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 p-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none min-h-[120px]"
+              className="w-full rounded-lg border border-gray-200 p-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none min-h-[120px] leading-7"
               rows={Math.max(5, editContent.split("\n").length + 2)}
               autoFocus
             />
@@ -218,7 +270,7 @@ function SectionCard({
             </div>
           </div>
         ) : (
-          <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+          <div className="text-sm text-gray-800 leading-7 whitespace-pre-wrap">
             {content || <span className="text-gray-400 italic">Empty section</span>}
           </div>
         )}
