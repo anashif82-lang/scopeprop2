@@ -2,7 +2,7 @@
 
 import type { ProposalFormData } from "@/types";
 import { Button } from "@/components/ui/button";
-import { Zap } from "lucide-react";
+import { Zap, CheckCircle2, Sparkles } from "lucide-react";
 
 interface StepReviewProps {
   data: Partial<ProposalFormData>;
@@ -59,21 +59,48 @@ export function StepReview({ data, onGenerate, onBack, loading }: StepReviewProp
     },
   ];
 
+  // Quality indicator: count filled fields
+  const filledCount = [
+    data.client_name,
+    data.project_type,
+    data.project_description,
+    data.goals,
+    data.deliverables,
+    data.timeline,
+    data.your_name,
+  ].filter(Boolean).length;
+
+  const qualityLabel =
+    filledCount >= 6
+      ? { text: "Your inputs look great — expect a detailed, high-quality proposal", color: "text-green-700", bg: "bg-green-50 border-green-100" }
+      : filledCount >= 4
+      ? { text: "Good inputs. Adding more detail will improve the output.", color: "text-blue-700", bg: "bg-blue-50 border-blue-100" }
+      : { text: "Add more detail to get a better proposal.", color: "text-amber-700", bg: "bg-amber-50 border-amber-100" };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-1">
-          Review & generate
-        </h2>
-        <p className="text-sm text-gray-500">
-          Confirm your inputs, then let AI write the full proposal.
-        </p>
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-violet-100">
+          <Sparkles className="h-5 w-5 text-violet-600" />
+        </div>
+        <div>
+          <h2 className="text-lg font-bold text-gray-900 mb-0.5">Review & generate</h2>
+          <p className="text-sm text-gray-500">
+            Confirm your inputs, then let AI write the full proposal.
+          </p>
+        </div>
       </div>
 
-      <div className="space-y-4">
+      {/* Quality banner */}
+      <div className={`flex items-center gap-2.5 rounded-xl border px-4 py-3 ${qualityLabel.bg}`}>
+        <CheckCircle2 className={`h-4 w-4 flex-shrink-0 ${qualityLabel.color}`} />
+        <span className={`text-sm font-medium ${qualityLabel.color}`}>{qualityLabel.text}</span>
+      </div>
+
+      <div className="space-y-3">
         {sections.map(({ title, rows }) => (
           <div key={title} className="rounded-lg border border-gray-100 overflow-hidden">
-            <div className="bg-gray-50/80 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <div className="bg-gray-50/80 px-4 py-2 text-xs font-bold uppercase tracking-wide text-gray-500">
               {title}
             </div>
             <div className="divide-y divide-gray-50">
@@ -91,12 +118,15 @@ export function StepReview({ data, onGenerate, onBack, loading }: StepReviewProp
       </div>
 
       {loading && (
-        <div className="rounded-xl bg-violet-50 border border-violet-100 px-5 py-4 flex items-center gap-3">
-          <div className="animate-spin h-5 w-5 rounded-full border-2 border-violet-600 border-t-transparent flex-shrink-0" />
+        <div className="rounded-xl bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-100 px-5 py-5 flex items-center gap-4">
+          <div className="relative flex-shrink-0">
+            <div className="animate-spin h-8 w-8 rounded-full border-2 border-violet-200 border-t-violet-600" />
+            <Zap className="absolute inset-0 m-auto h-3.5 w-3.5 text-violet-600" />
+          </div>
           <div>
-            <div className="text-sm font-medium text-violet-900">Generating your proposal…</div>
+            <div className="text-sm font-bold text-violet-900">Generating your proposal…</div>
             <div className="text-xs text-violet-600 mt-0.5">
-              AI is writing your scope, timeline, and pricing sections
+              AI is writing your scope, timeline, pricing, and terms
             </div>
           </div>
         </div>
