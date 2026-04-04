@@ -1,14 +1,16 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-export function Card({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
+interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+  variant?: "default" | "elevated";
+}
+
+export function Card({ className, variant = "default", ...props }: CardProps) {
   return (
     <div
       className={cn(
-        "rounded-xl border border-gray-100 bg-white shadow-sm",
+        "rounded-xl border border-gray-100 bg-white shadow-sm transition-all duration-200",
+        variant === "elevated" && "card-hover hover:border-violet-100",
         className
       )}
       {...props}

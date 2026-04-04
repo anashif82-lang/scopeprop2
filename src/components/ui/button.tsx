@@ -28,21 +28,23 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <Comp
         className={cn(
-          "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 disabled:pointer-events-none disabled:opacity-50",
+          "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
           {
-            "bg-violet-600 text-white hover:bg-violet-700 shadow-sm":
+            "bg-violet-600 text-white hover:bg-violet-700 shadow-sm active:scale-[0.97]":
               variant === "default",
-            "border border-gray-200 bg-white text-gray-800 hover:bg-gray-50":
+            "border border-gray-200 bg-white text-gray-800 hover:bg-gray-50 hover:border-gray-300 active:scale-[0.97]":
               variant === "outline",
-            "text-gray-700 hover:bg-gray-100": variant === "ghost",
-            "bg-red-600 text-white hover:bg-red-700": variant === "destructive",
+            "text-gray-700 hover:bg-gray-100 active:scale-[0.97]":
+              variant === "ghost",
+            "bg-red-600 text-white hover:bg-red-700 active:scale-[0.97]":
+              variant === "destructive",
             "text-violet-600 underline-offset-4 hover:underline p-0":
               variant === "link",
           },
           {
             "h-8 px-3 text-sm": size === "sm",
             "h-10 px-4 text-sm": size === "md",
-            "h-11 px-6 text-base": size === "lg",
+            "h-12 px-7 text-base font-semibold": size === "lg",
             "h-10 w-10": size === "icon",
           },
           className
