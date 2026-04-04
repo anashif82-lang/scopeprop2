@@ -16,6 +16,7 @@ import {
   Files,
   Link as LinkIcon,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { SECTION_LABELS, SECTION_ORDER } from "@/lib/db/proposals";
 
 interface ProposalEditorProps {
@@ -24,6 +25,7 @@ interface ProposalEditorProps {
 }
 
 export function ProposalEditor({ proposal, appUrl }: ProposalEditorProps) {
+  const router = useRouter();
   const { show, ToastComponent } = useToast();
   const [sections, setSections] = useState<Record<SectionKey, string>>(
     () => buildSectionMap(proposal.sections ?? [])
@@ -32,6 +34,7 @@ export function ProposalEditor({ proposal, appUrl }: ProposalEditorProps) {
   const [editContent, setEditContent] = useState("");
   const [saving, setSaving] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
 
   const publicUrl = `${appUrl}/p/${proposal.public_slug}`;
 
@@ -72,6 +75,21 @@ export function ProposalEditor({ proposal, appUrl }: ProposalEditorProps) {
   async function copySection(content: string) {
     await navigator.clipboard.writeText(content);
     show("Section copied to clipboard", "success");
+  }
+
+  async function duplicateProposal() {
+    setDuplicating(true);
+    try {
+      const res = await fetch(`/api/proposals/${proposal.id}/duplicate`, {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error();
+      const { proposal: copy } = await res.json();
+      router.push(`/dashboard/proposals/${copy.id}`);
+    } catch {
+      show("Failed to duplicate proposal", "error");
+      setDuplicating(false);
+    }
   }
 
   async function markSent() {
@@ -122,7 +140,8 @@ export function ProposalEditor({ proposal, appUrl }: ProposalEditorProps) {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => show("Duplicate coming soon", "success")}
+            loading={duplicating}
+            onClick={duplicateProposal}
           >
             <Files className="h-3.5 w-3.5" />
             Duplicate
