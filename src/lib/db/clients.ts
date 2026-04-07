@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Client } from "@/types";
 
+export type ClientWithCount = Client & { proposal_count: number };
+
 export async function listClients(organizationId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -11,6 +13,24 @@ export async function listClients(organizationId: string) {
 
   if (error) throw error;
   return data as Client[];
+}
+
+export async function listClientsWithProposalCount(
+  organizationId: string
+): Promise<ClientWithCount[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("clients")
+    .select("*, proposals(id)")
+    .eq("organization_id", organizationId)
+    .order("name");
+
+  if (error) throw error;
+
+  return (data ?? []).map((c) => {
+    const { proposals, ...client } = c as Client & { proposals: { id: string }[] | null };
+    return { ...client, proposal_count: proposals?.length ?? 0 };
+  });
 }
 
 export async function upsertClient(

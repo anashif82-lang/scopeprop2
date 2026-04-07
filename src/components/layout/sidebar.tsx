@@ -10,12 +10,14 @@ import {
   PlusCircle,
   Settings,
   LogOut,
+  Users,
 } from "lucide-react";
 import { useState } from "react";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/proposals", label: "Proposals", icon: FileText },
+  { href: "/dashboard/clients", label: "Clients", icon: Users },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
