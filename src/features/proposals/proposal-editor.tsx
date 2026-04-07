@@ -149,7 +149,9 @@ export function ProposalEditor({ proposal, appUrl }: ProposalEditorProps) {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => show("PDF export coming soon", "success")}
+            onClick={() =>
+              window.open(`/p/${proposal.public_slug}?print=1`, "_blank")
+            }
           >
             <FileOutput className="h-3.5 w-3.5" />
             Export PDF

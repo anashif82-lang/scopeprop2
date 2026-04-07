@@ -89,3 +89,44 @@ body {
 .fade-up {
   animation: fade-up 0.4s ease-out;
 }
+
+/* ─── Print / PDF export ───────────────────────────────────────────────────── */
+@media print {
+  @page {
+    margin: 1.5cm 2cm;
+    size: A4 portrait;
+  }
+
+  /* Hide interactive chrome */
+  [data-print-hide] {
+    display: none !important;
+  }
+
+  /* Remove decorative shadows */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  /* Preserve background colors and gradients */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Keep sections together — don't split across pages */
+  [data-print-section] {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Suppress browser-appended link URLs */
+  a[href]::after {
+    content: none !important;
+  }
+
+  /* Ensure white page background */
+  body {
+    background: white !important;
+  }
+}

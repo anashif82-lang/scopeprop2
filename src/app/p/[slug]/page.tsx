@@ -14,9 +14,11 @@ import {
   ArrowRight as ArrowRightIcon,
 } from "lucide-react";
 import { AcceptBar } from "./accept-bar";
+import { PrintTrigger } from "./print-trigger";
 
 interface Props {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ print?: string }>;
 }
 
 const SECTION_ICONS: Record<string, React.ElementType> = {
@@ -31,19 +33,25 @@ const SECTION_ICONS: Record<string, React.ElementType> = {
   next_steps: ArrowRightIcon,
 };
 
-export default async function PublicProposalPage({ params }: Props) {
-  const { slug } = await params;
-  const proposal = await getProposalBySlug(slug);
+export default async function PublicProposalPage({ params, searchParams }: Props) {
+  const [{ slug }, { print }] = await Promise.all([params, searchParams]);
+  const isPrint = print === "1";
 
+  const proposal = await getProposalBySlug(slug);
   if (!proposal) notFound();
 
-  // Record view event (fire and forget)
-  recordProposalEvent(proposal.id, "viewed", { slug }).catch(() => {});
+  // Record view event — skip for print to avoid inflating view counts
+  if (!isPrint) {
+    recordProposalEvent(proposal.id, "viewed", { slug }).catch(() => {});
+  }
 
   const sectionMap = buildSectionMap(proposal);
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Auto-trigger print dialog when ?print=1 */}
+      {isPrint && <PrintTrigger />}
+
       {/* Letterhead top bar */}
       <div className="bg-gradient-to-r from-gray-900 to-gray-800 text-white">
         <div className="max-w-3xl mx-auto px-6 py-5 flex items-center justify-between">
@@ -68,16 +76,18 @@ export default async function PublicProposalPage({ params }: Props) {
         </div>
       </div>
 
-      {/* Sticky accept bar (client component, desktop only) */}
-      <AcceptBar
-        title={proposal.title}
-        email={proposal.client?.email ?? undefined}
-        proposalTitle={proposal.title}
-      />
+      {/* Sticky accept bar — hidden in print */}
+      <div data-print-hide>
+        <AcceptBar
+          title={proposal.title}
+          email={proposal.client?.email ?? undefined}
+          proposalTitle={proposal.title}
+        />
+      </div>
 
       <div className="max-w-3xl mx-auto py-10 px-6">
         {/* Proposal header */}
-        <div className="mb-10">
+        <div className="mb-10" data-print-section>
           <div className="text-xs font-semibold uppercase tracking-widest text-violet-600 mb-3">
             Project Proposal
           </div>
@@ -128,12 +138,13 @@ export default async function PublicProposalPage({ params }: Props) {
           })}
         </div>
 
-        {/* CTA footer */}
-        <div className="mt-14 relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-700 via-violet-600 to-purple-700 text-white p-10 text-center">
-          {/* Decorative blobs */}
+        {/* CTA footer — hidden in print */}
+        <div
+          data-print-hide
+          className="mt-14 relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-700 via-violet-600 to-purple-700 text-white p-10 text-center"
+        >
           <div className="absolute -top-10 -right-10 h-40 w-40 rounded-full bg-white/5" />
           <div className="absolute -bottom-8 -left-8 h-32 w-32 rounded-full bg-white/5" />
-
           <div className="relative">
             <h2 className="text-2xl font-black mb-2">Ready to move forward?</h2>
             <p className="text-violet-200 text-sm mb-7 max-w-sm mx-auto leading-relaxed">
@@ -154,8 +165,8 @@ export default async function PublicProposalPage({ params }: Props) {
           </div>
         </div>
 
-        {/* Powered by */}
-        <div className="mt-8 text-center text-xs text-gray-400">
+        {/* Powered by — hidden in print */}
+        <div data-print-hide className="mt-8 text-center text-xs text-gray-400">
           Created with{" "}
           <a href="/" className="text-violet-500 hover:underline">
             ScopeProp
@@ -197,10 +208,9 @@ function Section({
 
   return (
     <div
+      data-print-section
       className={`rounded-xl border overflow-hidden ${
-        highlight
-          ? "bg-violet-50 border-violet-100"
-          : "bg-white border-gray-100"
+        highlight ? "bg-violet-50 border-violet-100" : "bg-white border-gray-100"
       }`}
     >
       <div
