@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -13,6 +13,14 @@ export default function LoginPage() {
   const { show, ToastComponent } = useToast();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ email: "", password: "" });
+  const [urlError, setUrlError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const err = params.get("error");
+    if (err === "callback_failed") setUrlError("Authentication failed. Please try again.");
+    else if (err) setUrlError(err);
+  }, []);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -55,6 +63,12 @@ export default function LoginPage() {
           <h1 className="text-2xl font-bold text-gray-900">Welcome back</h1>
           <p className="mt-2 text-sm text-gray-500">Sign in to your account</p>
         </div>
+
+        {urlError && (
+          <div className="mb-4 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {urlError}
+          </div>
+        )}
 
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
           <button
@@ -101,15 +115,25 @@ export default function LoginPage() {
               required
               autoComplete="email"
             />
-            <Input
-              label="Password"
-              type="password"
-              placeholder="••••••••"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              required
-              autoComplete="current-password"
-            />
+            <div>
+              <Input
+                label="Password"
+                type="password"
+                placeholder="••••••••"
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                required
+                autoComplete="current-password"
+              />
+              <div className="mt-1.5 text-right">
+                <Link
+                  href="/auth/reset-password"
+                  className="text-xs text-gray-400 hover:text-violet-600 transition-colors"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+            </div>
             <Button type="submit" className="w-full" loading={loading}>
               Sign in
             </Button>

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
-import { getProposalBySlug, recordProposalEvent, SECTION_LABELS, SECTION_ORDER } from "@/lib/db/proposals";
+import { getProposalBySlug, SECTION_LABELS, SECTION_ORDER } from "@/lib/db/proposals";
+import { createServiceClient } from "@/lib/supabase/service";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Proposal } from "@/types";
 import {
@@ -40,9 +41,23 @@ export default async function PublicProposalPage({ params, searchParams }: Props
   const proposal = await getProposalBySlug(slug);
   if (!proposal) notFound();
 
-  // Record view event — skip for print to avoid inflating view counts
+  // Record view event and advance sent→viewed — skip for print
   if (!isPrint) {
-    recordProposalEvent(proposal.id, "viewed", { slug }).catch(() => {});
+    const svc = createServiceClient();
+    // Fire-and-forget; errors are non-fatal
+    svc.from("proposal_events").insert({
+      proposal_id: proposal.id,
+      event_type: "viewed",
+      metadata: { slug },
+    }).then(() => {
+      // Auto-advance status: sent → viewed
+      if (proposal.status === "sent") {
+        svc.from("proposals")
+          .update({ status: "viewed", updated_at: new Date().toISOString() })
+          .eq("id", proposal.id)
+          .then(() => {});
+      }
+    });
   }
 
   const sectionMap = buildSectionMap(proposal);
