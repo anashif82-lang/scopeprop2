@@ -4,7 +4,7 @@ AI-powered proposal generation SaaS for freelancers and agencies. Generate a ful
 
 ## Stack
 
-- **Framework**: Next.js 15 (App Router) + TypeScript
+- **Framework**: Next.js 16 (App Router) + TypeScript
 - **Styling**: Tailwind CSS
 - **Auth + DB**: Supabase (PostgreSQL + Row Level Security)
 - **AI**: OpenAI `gpt-4o` with offline stub fallback
@@ -33,9 +33,10 @@ Open [http://localhost:3000](http://localhost:3000).
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | Supabase service role key |
 | `OPENAI_API_KEY` | Optional | GPT-4o (stub provider used if absent) |
 | `NEXT_PUBLIC_APP_URL` | Yes | Full app URL, no trailing slash |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Optional | Stripe Phase 2 |
-| `STRIPE_SECRET_KEY` | Optional | Stripe Phase 2 |
-| `RESEND_API_KEY` | Optional | Email Phase 2 |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Optional | Stripe — Phase 2 |
+| `STRIPE_SECRET_KEY` | Optional | Stripe — Phase 2 |
+| `STRIPE_WEBHOOK_SECRET` | Optional | Stripe webhook — Phase 2 |
+| `RESEND_API_KEY` | Optional | Email — Phase 2 |
 
 ## Database Setup
 
@@ -55,9 +56,10 @@ src/
     auth/{login,signup}/       Auth pages
     auth/callback/route.ts     OAuth callback
     dashboard/                 Protected dashboard + proposal editor
+      settings/                Account + workspace settings
     proposals/                 Proposal list + wizard
     p/[slug]/                  Public shareable proposal page
-    api/proposals/             Generate, section update, status update
+    api/proposals/             Generate, section PATCH, status PATCH, duplicate
   components/ui/               Button, Input, Textarea, Select, Badge, Card, Toast
   components/layout/           Navbar, Sidebar
   features/proposals/          Wizard steps, editor, table row
@@ -101,7 +103,9 @@ supabase/migrations/           SQL schema
 | Public shareable proposal page | Complete |
 | Proposal event tracking | Complete |
 | Supabase schema + RLS | Complete |
-| Stripe billing | Stubbed |
+| Settings page (profile + workspace) | Complete |
+| Duplicate proposal | Complete |
+| Stripe billing | Stubbed — Phase 2 |
 | Resend email | Stubbed |
 | PDF export | Phase 2 |
 | E-signature | Phase 2 |
