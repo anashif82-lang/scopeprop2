@@ -105,8 +105,8 @@ supabase/migrations/           SQL schema
 | Supabase schema + RLS | Complete |
 | Settings page (profile + workspace) | Complete |
 | Duplicate proposal | Complete |
-| Stripe billing | Stubbed — Phase 2 |
-| Resend email | Stubbed |
+| Send proposal via email (Resend) | Complete — stub fallback if no key |
+| Stripe billing | Phase 2 |
 | PDF export | Phase 2 |
 | E-signature | Phase 2 |
 | Multi-user team seats | Schema ready, UI Phase 2 |

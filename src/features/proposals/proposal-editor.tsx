@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   XCircle,
   RotateCcw,
+  Mail,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { SECTION_LABELS, SECTION_ORDER } from "@/lib/db/proposals";
@@ -27,12 +28,12 @@ interface ProposalEditorProps {
   appUrl: string;
 }
 
-// Contextual transitions per status — only show what makes sense
+// Contextual status-only transitions (no email) — shown alongside Send panel
 const STATUS_TRANSITIONS: Record<
   ProposalStatus,
   { status: ProposalStatus; label: string; variant: "default" | "outline" | "ghost"; icon: React.ElementType }[]
 > = {
-  draft:    [{ status: "sent",     label: "Mark as sent",     variant: "default", icon: Send }],
+  draft:    [],  // draft uses Send panel as primary action; "Mark as sent" removed
   sent:     [{ status: "accepted", label: "Mark as accepted", variant: "default", icon: CheckCircle2 },
              { status: "declined", label: "Mark as declined", variant: "outline", icon: XCircle }],
   viewed:   [{ status: "accepted", label: "Mark as accepted", variant: "default", icon: CheckCircle2 },
@@ -56,6 +57,9 @@ export function ProposalEditor({ proposal, appUrl }: ProposalEditorProps) {
   // Track status locally so badge + actions update immediately without a page reload
   const [currentStatus, setCurrentStatus] = useState<ProposalStatus>(proposal.status);
   const [updatingStatus, setUpdatingStatus] = useState<ProposalStatus | null>(null);
+  const [sendPanelOpen, setSendPanelOpen] = useState(false);
+  const [recipientEmail, setRecipientEmail] = useState(proposal.client?.email ?? "");
+  const [sending, setSending] = useState(false);
 
   const publicUrl = `${appUrl}/p/${proposal.public_slug}`;
 
@@ -113,6 +117,30 @@ export function ProposalEditor({ proposal, appUrl }: ProposalEditorProps) {
     }
   }
 
+  async function sendProposal(e: React.FormEvent) {
+    e.preventDefault();
+    if (!recipientEmail.trim()) return;
+    setSending(true);
+    try {
+      const res = await fetch(`/api/proposals/${proposal.id}/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: recipientEmail }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error ?? "Failed to send");
+      }
+      setCurrentStatus("sent");
+      setSendPanelOpen(false);
+      show("Proposal sent successfully", "success");
+    } catch (err: unknown) {
+      show(err instanceof Error ? err.message : "Failed to send", "error");
+    } finally {
+      setSending(false);
+    }
+  }
+
   async function updateStatus(newStatus: ProposalStatus) {
     setUpdatingStatus(newStatus);
     try {
@@ -158,7 +186,7 @@ export function ProposalEditor({ proposal, appUrl }: ProposalEditorProps) {
           )}
         </div>
 
-        {/* Static actions */}
+        {/* Actions */}
         <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
@@ -183,26 +211,74 @@ export function ProposalEditor({ proposal, appUrl }: ProposalEditorProps) {
               Preview
             </a>
           </Button>
+          {/* Primary send CTA — always visible */}
+          <Button
+            size="sm"
+            onClick={() => setSendPanelOpen((o) => !o)}
+          >
+            <Mail className="h-3.5 w-3.5" />
+            {currentStatus === "draft" ? "Send proposal" : "Re-send"}
+          </Button>
         </div>
       </div>
 
-      {/* Status action bar — contextual buttons for current status */}
-      <div className="mb-6 flex flex-wrap items-center gap-2 rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3">
-        <span className="text-xs font-semibold text-gray-400 mr-1">Status:</span>
-        {STATUS_TRANSITIONS[currentStatus].map(({ status, label, variant, icon: Icon }) => (
-          <Button
-            key={status}
-            size="sm"
-            variant={variant}
-            loading={updatingStatus === status}
-            disabled={updatingStatus !== null}
-            onClick={() => updateStatus(status)}
-          >
-            <Icon className="h-3.5 w-3.5" />
-            {label}
-          </Button>
-        ))}
-      </div>
+      {/* Send panel — inline form, appears on "Send proposal" click */}
+      {sendPanelOpen && (
+        <form
+          onSubmit={sendProposal}
+          className="mb-6 step-in rounded-xl border border-violet-100 bg-violet-50/40 px-5 py-4 flex flex-col sm:flex-row items-start sm:items-end gap-3"
+        >
+          <div className="flex-1 w-full">
+            <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+              Recipient email
+            </label>
+            <input
+              type="email"
+              required
+              value={recipientEmail}
+              onChange={(e) => setRecipientEmail(e.target.value)}
+              placeholder="client@example.com"
+              className="w-full h-10 rounded-xl border border-gray-200 bg-white px-3.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500 hover:border-gray-300 transition-colors"
+              autoFocus
+            />
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Button type="submit" size="sm" loading={sending}>
+              <Send className="h-3.5 w-3.5" />
+              Send
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => setSendPanelOpen(false)}
+              disabled={sending}
+            >
+              Cancel
+            </Button>
+          </div>
+        </form>
+      )}
+
+      {/* Status action bar — contextual transitions (accepted/declined/reset) */}
+      {STATUS_TRANSITIONS[currentStatus].length > 0 && (
+        <div className="mb-6 flex flex-wrap items-center gap-2 rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3">
+          <span className="text-xs font-semibold text-gray-400 mr-1">Status:</span>
+          {STATUS_TRANSITIONS[currentStatus].map(({ status, label, variant, icon: Icon }) => (
+            <Button
+              key={status}
+              size="sm"
+              variant={variant}
+              loading={updatingStatus === status}
+              disabled={updatingStatus !== null}
+              onClick={() => updateStatus(status)}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {label}
+            </Button>
+          ))}
+        </div>
+      )}
 
       {/* Share bar */}
       <div className="mb-8 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 px-5 py-4 flex items-center gap-4 shadow-sm shadow-violet-200">
