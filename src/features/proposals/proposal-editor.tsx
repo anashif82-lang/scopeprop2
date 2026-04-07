@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Proposal, ProposalSection, SectionKey } from "@/types";
+import type { Proposal, ProposalSection, ProposalStatus, SectionKey } from "@/types";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { cn, statusColor, statusLabel } from "@/lib/utils";
@@ -15,6 +15,9 @@ import {
   FileOutput,
   Files,
   Link as LinkIcon,
+  CheckCircle2,
+  XCircle,
+  RotateCcw,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { SECTION_LABELS, SECTION_ORDER } from "@/lib/db/proposals";
@@ -23,6 +26,22 @@ interface ProposalEditorProps {
   proposal: Proposal;
   appUrl: string;
 }
+
+// Contextual transitions per status — only show what makes sense
+const STATUS_TRANSITIONS: Record<
+  ProposalStatus,
+  { status: ProposalStatus; label: string; variant: "default" | "outline" | "ghost"; icon: React.ElementType }[]
+> = {
+  draft:    [{ status: "sent",     label: "Mark as sent",     variant: "default", icon: Send }],
+  sent:     [{ status: "accepted", label: "Mark as accepted", variant: "default", icon: CheckCircle2 },
+             { status: "declined", label: "Mark as declined", variant: "outline", icon: XCircle }],
+  viewed:   [{ status: "accepted", label: "Mark as accepted", variant: "default", icon: CheckCircle2 },
+             { status: "declined", label: "Mark as declined", variant: "outline", icon: XCircle }],
+  accepted: [{ status: "declined", label: "Mark as declined", variant: "outline", icon: XCircle },
+             { status: "draft",    label: "Reset to draft",   variant: "ghost",   icon: RotateCcw }],
+  declined: [{ status: "accepted", label: "Mark as accepted", variant: "default", icon: CheckCircle2 },
+             { status: "draft",    label: "Reset to draft",   variant: "ghost",   icon: RotateCcw }],
+};
 
 export function ProposalEditor({ proposal, appUrl }: ProposalEditorProps) {
   const router = useRouter();
@@ -33,8 +52,10 @@ export function ProposalEditor({ proposal, appUrl }: ProposalEditorProps) {
   const [editing, setEditing] = useState<SectionKey | null>(null);
   const [editContent, setEditContent] = useState("");
   const [saving, setSaving] = useState(false);
-  const [sharing, setSharing] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
+  // Track status locally so badge + actions update immediately without a page reload
+  const [currentStatus, setCurrentStatus] = useState<ProposalStatus>(proposal.status);
+  const [updatingStatus, setUpdatingStatus] = useState<ProposalStatus | null>(null);
 
   const publicUrl = `${appUrl}/p/${proposal.public_slug}`;
 
@@ -92,20 +113,21 @@ export function ProposalEditor({ proposal, appUrl }: ProposalEditorProps) {
     }
   }
 
-  async function markSent() {
-    setSharing(true);
+  async function updateStatus(newStatus: ProposalStatus) {
+    setUpdatingStatus(newStatus);
     try {
       const res = await fetch(`/api/proposals/${proposal.id}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "sent" }),
+        body: JSON.stringify({ status: newStatus }),
       });
       if (!res.ok) throw new Error();
-      show("Proposal marked as sent", "success");
+      setCurrentStatus(newStatus);
+      show(`Marked as ${statusLabel(newStatus).toLowerCase()}`, "success");
     } catch {
       show("Failed to update status", "error");
     } finally {
-      setSharing(false);
+      setUpdatingStatus(null);
     }
   }
 
@@ -118,13 +140,14 @@ export function ProposalEditor({ proposal, appUrl }: ProposalEditorProps) {
         <div>
           <div className="flex items-center gap-3 mb-1">
             <h1 className="text-2xl font-bold text-gray-900">{proposal.title}</h1>
+            {/* Badge reflects local state — updates immediately on change */}
             <span
               className={cn(
                 "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold",
-                statusColor(proposal.status)
+                statusColor(currentStatus)
               )}
             >
-              {statusLabel(proposal.status)}
+              {statusLabel(currentStatus)}
             </span>
           </div>
           {proposal.client && (
@@ -135,7 +158,7 @@ export function ProposalEditor({ proposal, appUrl }: ProposalEditorProps) {
           )}
         </div>
 
-        {/* Action bar */}
+        {/* Static actions */}
         <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
@@ -149,9 +172,7 @@ export function ProposalEditor({ proposal, appUrl }: ProposalEditorProps) {
           <Button
             variant="outline"
             size="sm"
-            onClick={() =>
-              window.open(`/p/${proposal.public_slug}?print=1`, "_blank")
-            }
+            onClick={() => window.open(`/p/${proposal.public_slug}?print=1`, "_blank")}
           >
             <FileOutput className="h-3.5 w-3.5" />
             Export PDF
@@ -162,13 +183,25 @@ export function ProposalEditor({ proposal, appUrl }: ProposalEditorProps) {
               Preview
             </a>
           </Button>
-          {proposal.status === "draft" && (
-            <Button size="sm" loading={sharing} onClick={markSent}>
-              <Send className="h-3.5 w-3.5" />
-              Mark as sent
-            </Button>
-          )}
         </div>
+      </div>
+
+      {/* Status action bar — contextual buttons for current status */}
+      <div className="mb-6 flex flex-wrap items-center gap-2 rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3">
+        <span className="text-xs font-semibold text-gray-400 mr-1">Status:</span>
+        {STATUS_TRANSITIONS[currentStatus].map(({ status, label, variant, icon: Icon }) => (
+          <Button
+            key={status}
+            size="sm"
+            variant={variant}
+            loading={updatingStatus === status}
+            disabled={updatingStatus !== null}
+            onClick={() => updateStatus(status)}
+          >
+            <Icon className="h-3.5 w-3.5" />
+            {label}
+          </Button>
+        ))}
       </div>
 
       {/* Share bar */}

@@ -2,7 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getOrCreateOrganization } from "@/lib/db/organizations";
 import { updateProposalStatus, recordProposalEvent } from "@/lib/db/proposals";
-import type { Proposal } from "@/types";
+import type { EventType, Proposal } from "@/types";
+
+// Map proposal status → event type (draft has no dedicated event; use "updated")
+const STATUS_EVENT: Record<Proposal["status"], EventType> = {
+  draft:    "updated",
+  sent:     "shared",
+  viewed:   "viewed",
+  accepted: "accepted",
+  declined: "declined",
+};
 
 export async function PATCH(
   request: NextRequest,
@@ -36,7 +45,7 @@ export async function PATCH(
     );
 
     await updateProposalStatus(id, status, organization.id);
-    await recordProposalEvent(id, status === "sent" ? "shared" : status, {
+    await recordProposalEvent(id, STATUS_EVENT[status as Proposal["status"]], {
       updated_by: user.id,
     });
 
