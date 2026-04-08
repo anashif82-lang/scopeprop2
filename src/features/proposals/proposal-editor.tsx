@@ -21,7 +21,7 @@ import {
   Mail,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { SECTION_LABELS, SECTION_ORDER } from "@/lib/db/proposals";
+import { SECTION_LABELS, SECTION_ORDER } from "@/lib/db/proposal-constants";
 
 interface ProposalEditorProps {
   proposal: Proposal;
