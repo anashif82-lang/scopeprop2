@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
-import type { Client } from "@/types";
+import type { Client, ClientWithCount } from "@/types";
 
-export type ClientWithCount = Client & { proposal_count: number };
+export type { ClientWithCount };
 
 export async function listClients(organizationId: string) {
   const supabase = await createClient();

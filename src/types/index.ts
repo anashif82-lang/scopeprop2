@@ -55,6 +55,8 @@ export interface Client {
   created_at: string;
 }
 
+export type ClientWithCount = Client & { proposal_count: number };
+
 // ─── Proposal ─────────────────────────────────────────────────────────────────
 
 export interface Proposal {

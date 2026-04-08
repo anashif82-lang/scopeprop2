@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import type { ClientWithCount } from "@/lib/db/clients";
+import type { ClientWithCount } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/toast";
