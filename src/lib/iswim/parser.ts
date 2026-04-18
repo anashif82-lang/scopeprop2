@@ -95,19 +95,51 @@ async function warmup(): Promise<WarmupState> {
   }
 }
 
+async function fetchViaScraperApi(url: string, apiKey: string): Promise<string> {
+  const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(url)}&render=false`;
+  const res = await fetch(proxyUrl, { cache: "no-store" });
+  if (!res.ok) throw new Error(`ScraperAPI ${res.status} ${res.statusText}`);
+  const html = await res.text();
+  if (html.length < 500) throw new Error(`ScraperAPI returned too-short body (${html.length}B)`);
+  return html;
+}
+
 export async function fetchPlayerPage(
   playerId: number,
   options?: { rawUrl?: string | null },
 ): Promise<string> {
-  // Step 1: warm up and collect session cookies. Without this, the player
-  // details endpoint 500s on ASP.NET's session lookup.
+  const scraperKey = process.env.SCRAPERAPI_KEY;
+  const primaryUrl = `${ISWIM_PLAYER_URL}/${playerId}?tab=seasonalbests`;
+
+  // ── Path A: ScraperAPI (routes through residential IPs, bypasses origin block) ──
+  if (scraperKey) {
+    const candidates = [
+      primaryUrl,
+      `${ISWIM_PLAYER_URL}/${playerId}`,
+      options?.rawUrl,
+    ].filter((u): u is string => Boolean(u));
+
+    const scraperAttempts: string[] = [];
+    for (const url of candidates) {
+      try {
+        const html = await fetchViaScraperApi(url, scraperKey);
+        if (html.includes("Players/Details") || /שיאים|Personal|season/i.test(html)) {
+          return html;
+        }
+        scraperAttempts.push(`${url} → body ok but not a player page (${html.length}B)`);
+      } catch (e) {
+        scraperAttempts.push(`${url} → ${e instanceof Error ? e.message : "error"}`);
+      }
+    }
+    // ScraperAPI failed — fall through to direct fetch (logged below)
+    console.warn("ScraperAPI attempts failed:", scraperAttempts.join(" | "));
+  }
+
+  // ── Path B: Direct fetch (may be blocked by origin, kept as last resort) ──
   const { cookie, diagnostics } = await warmup();
 
-  // Step 2: try candidate URLs with the iframe-parent Referer (isr.org.il).
-  // loglig pages are normally loaded inside <iframe src="..."> embedded on
-  // isr.org.il, and the app appears to require that context.
   const candidates = [
-    `${ISWIM_PLAYER_URL}/${playerId}?tab=seasonalbests`,
+    primaryUrl,
     `${ISWIM_PLAYER_URL}/${playerId}`,
     options?.rawUrl,
   ].filter((u): u is string => Boolean(u));
@@ -115,10 +147,7 @@ export async function fetchPlayerPage(
   const attempts: string[] = [];
   for (const url of candidates) {
     try {
-      const res = await fetchUrl(url, {
-        referer: "https://isr.org.il/",
-        cookie,
-      });
+      const res = await fetchUrl(url, { referer: "https://isr.org.il/", cookie });
       if (res.ok) {
         const html = await res.text();
         if (html.length > 500 && (html.includes("Players/Details") || /שיאים|Personal|season/i.test(html))) {
@@ -127,10 +156,10 @@ export async function fetchPlayerPage(
         attempts.push(`${url} → 200 body=${html.length}B (not a player page)`);
         continue;
       }
-      const server   = res.headers.get("server") ?? "?";
-      const cfRay    = res.headers.get("cf-ray") ?? "";
-      const cfCache  = res.headers.get("cf-cache-status") ?? "";
-      const via      = [server, cfRay && `ray:${cfRay}`, cfCache && `cache:${cfCache}`].filter(Boolean).join(" ");
+      const server  = res.headers.get("server") ?? "?";
+      const cfRay   = res.headers.get("cf-ray") ?? "";
+      const cfCache = res.headers.get("cf-cache-status") ?? "";
+      const via     = [server, cfRay && `ray:${cfRay}`, cfCache && `cache:${cfCache}`].filter(Boolean).join(" ");
       attempts.push(`${url} → ${res.status} ${res.statusText} [${via}]`);
     } catch (e) {
       const cause = e instanceof Error ? (e.cause as { code?: string } | undefined)?.code ?? e.message : "fetch exception";
